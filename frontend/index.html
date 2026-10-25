@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Knowledge Assistant</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 2rem; }
+  input, textarea, button { font: inherit; padding: .5rem; width: 100%; box-sizing: border-box; margin: .25rem 0; }
+  textarea { min-height: 110px; } button { cursor: pointer; width: auto; padding: .5rem 1rem; }
+  .src { border-left: 3px solid #888; padding: .25rem .75rem; margin: .5rem 0; background: #f6f6f6; font-size: .9rem; }
+  .meta { color: #666; font-size: .8rem; } #answer { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>RAG Knowledge Assistant</h1>
+<p class="meta">Add documents, then ask questions. Answers cite the passages they came from. <a href="/docs">API docs</a></p>
+
+<h2>1. Add a document</h2>
+<input id="title" placeholder="Title">
+<textarea id="text" placeholder="Paste text or markdown"></textarea>
+<button onclick="addDoc()">Add</button> <span id="addStatus" class="meta"></span>
+<div id="docs" class="meta"></div>
+
+<h2>2. Ask a question</h2>
+<input id="q" placeholder="e.g. How do I verify a webhook signature?" onkeydown="if(event.key==='Enter')ask()">
+<button onclick="ask()">Ask</button>
+<p id="answer"></p><div id="sources"></div>
+
+<script>
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function loadDocs() {
+  const docs = await (await fetch('/documents')).json();
+  document.getElementById('docs').textContent = docs.length
+    ? 'Documents: ' + docs.map(d => `${d.title} (${d.chunks} chunks)`).join(', ') : 'No documents yet.';
+}
+async function addDoc() {
+  const r = await fetch('/documents', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({title: title.value, text: text.value})});
+  addStatus.textContent = r.ok ? 'Added.' : 'Error: ' + (await r.text());
+  if (r.ok) { title.value = ''; text.value = ''; loadDocs(); }
+}
+async function ask() {
+  answer.textContent = 'Thinking...'; sources.innerHTML = '';
+  const r = await fetch('/query', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: q.value})});
+  if (!r.ok) { answer.textContent = 'Error: ' + (await r.text()); return; }
+  const data = await r.json();
+  answer.textContent = data.answer;
+  sources.innerHTML = '<p class="meta">Sources (' + data.mode + ' answer)</p>' + data.sources.map((s, i) =>
+    `<div class="src"><b>[${i + 1}] ${esc(s.title)}</b> <span class="meta">score ${s.score}</span><br>${esc(s.content)}</div>`).join('');
+}
+loadDocs();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+[
+ {
+  "question": "How do I create a sandbox account and what keys do I get?",
+  "expected_title": "onboarding.md"
+ },
+ {
+  "question": "What should I do if my secret API key leaked?",
+  "expected_title": "onboarding.md"
+ },
+ {
+  "question": "What documents are needed for business verification before going live?",
+  "expected_title": "onboarding.md"
+ },
+ {
+  "question": "Why was my plain HTTP request rejected?",
+  "expected_title": "onboarding.md"
+ },
+ {
+  "question": "How do I verify the webhook signature?",
+  "expected_title": "webhooks.md"
+ },
+ {
+  "question": "How many times are failed webhook deliveries retried?",
+  "expected_title": "webhooks.md"
+ },
+ {
+  "question": "My webhook handler received the same event twice, how do I handle duplicates?",
+  "expected_title": "webhooks.md"
+ },
+ {
+  "question": "How quickly must my endpoint respond to a webhook?",
+  "expected_title": "webhooks.md"
+ },
+ {
+  "question": "Can I refund only part of a payment?",
+  "expected_title": "refunds.md"
+ },
+ {
+  "question": "How long do I have to refund a payment?",
+  "expected_title": "refunds.md"
+ },
+ {
+  "question": "What happens if I lose a chargeback dispute?",
+  "expected_title": "refunds.md"
+ },
+ {
+  "question": "When do settlements reach my bank account?",
+  "expected_title": "refunds.md"
+ },
+ {
+  "question": "Someone's bank is contesting a transaction. What evidence can I send and by when?",
+  "expected_title": "refunds.md"
+ },
+ {
+  "question": "Is there a way to swap credentials without taking my service down?",
+  "expected_title": "onboarding.md"
+ },
+ {
+  "question": "How do I stop attackers from replaying captured notification requests?",
+  "expected_title": "webhooks.md"
+ }
+]
