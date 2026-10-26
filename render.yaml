@@ -5,23 +5,11 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /ready
-    autoDeploy: false   # deploys are triggered by CI (deploy hook) after tests pass
+    autoDeploy: false
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: rag-db
-          property: connectionString
+        sync: false
       - key: EMBEDDING_PROVIDER
         value: hash
-      - key: OPENAI_API_KEY
-        sync: false     # optional: set in the Render dashboard
-      - key: ANTHROPIC_API_KEY
-        sync: false     # optional: set in the Render dashboard
       - key: DB_POOL_MAX_SIZE
         value: "5"
-
-databases:
-  - name: rag-db
-    plan: free
-    databaseName: rag
-    user: rag
