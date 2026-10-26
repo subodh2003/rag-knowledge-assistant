@@ -7,50 +7,123 @@
 <style>
   body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
   h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 2rem; }
-  input, textarea, button { font: inherit; padding: .5rem; width: 100%; box-sizing: border-box; margin: .25rem 0; }
-  textarea { min-height: 110px; } button { cursor: pointer; width: auto; padding: .5rem 1rem; }
+  input[type=text], textarea { font: inherit; padding: .5rem; width: 100%; box-sizing: border-box; margin: .25rem 0; }
+  textarea { min-height: 110px; }
+  button { font: inherit; cursor: pointer; padding: .4rem .9rem; }
+  button.small { padding: .15rem .5rem; font-size: .8rem; }
+  #drop { border: 2px dashed #999; border-radius: 8px; padding: 1.5rem; text-align: center; color: #555; }
+  #drop.over { background: #eef6ff; border-color: #3b82f6; }
+  .row { display: flex; align-items: center; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid #eee; }
+  .row .name { flex: 1; } .meta { color: #666; font-size: .8rem; }
   .src { border-left: 3px solid #888; padding: .25rem .75rem; margin: .5rem 0; background: #f6f6f6; font-size: .9rem; }
-  .meta { color: #666; font-size: .8rem; } #answer { white-space: pre-wrap; }
+  #answer { white-space: pre-wrap; } .actions { margin: .5rem 0; display: flex; gap: .5rem; flex-wrap: wrap; }
 </style>
 </head>
 <body>
 <h1>RAG Knowledge Assistant</h1>
 <p class="meta">Add documents, then ask questions. Answers cite the passages they came from. <a href="/docs">API docs</a></p>
 
-<h2>1. Add a document</h2>
-<input id="title" placeholder="Title">
-<textarea id="text" placeholder="Paste text or markdown"></textarea>
-<button onclick="addDoc()">Add</button> <span id="addStatus" class="meta"></span>
-<div id="docs" class="meta"></div>
+<h2>1. Your documents</h2>
+<div id="drop">
+  Drop .txt / .md files here, or
+  <input id="files" type="file" accept=".txt,.md,text/plain,text/markdown" multiple>
+</div>
+<div class="actions">
+  <button id="samples" hidden>Load sample docs</button>
+  <button id="clear" class="small">Delete all</button>
+  <span id="status" class="meta"></span>
+</div>
+<div id="docs"></div>
+<details><summary class="meta">Or paste text instead</summary>
+  <input id="title" type="text" placeholder="Title">
+  <textarea id="text" placeholder="Paste text or markdown"></textarea>
+  <button id="addPasted">Add</button>
+</details>
 
 <h2>2. Ask a question</h2>
-<input id="q" placeholder="e.g. How do I verify a webhook signature?" onkeydown="if(event.key==='Enter')ask()">
-<button onclick="ask()">Ask</button>
+<input id="q" type="text" placeholder="e.g. How do I verify a webhook signature?">
+<button id="ask">Ask</button>
 <p id="answer"></p><div id="sources"></div>
 
 <script>
+const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SAMPLES = ['onboarding.md', 'webhooks.md', 'refunds.md'];
+
 async function loadDocs() {
   const docs = await (await fetch('/documents')).json();
-  document.getElementById('docs').textContent = docs.length
-    ? 'Documents: ' + docs.map(d => `${d.title} (${d.chunks} chunks)`).join(', ') : 'No documents yet.';
+  $('docs').innerHTML = docs.length
+    ? docs.map(d => `<div class="row"><span class="name">${esc(d.title)}</span>
+        <span class="meta">${d.chunks} chunks</span>
+        <button class="small" data-del="${d.id}">Delete</button></div>`).join('')
+    : '<p class="meta">No documents yet.</p>';
+  $('clear').hidden = !docs.length;
 }
-async function addDoc() {
+
+async function uploadFiles(fileList) {
+  const files = [...fileList];
+  for (const [i, f] of files.entries()) {
+    $('status').textContent = `Uploading ${i + 1}/${files.length}: ${f.name}`;
+    const fd = new FormData(); fd.append('file', f); fd.append('title', f.name);
+    const r = await fetch('/documents/upload', {method: 'POST', body: fd});
+    if (!r.ok) { $('status').textContent = `Failed: ${f.name} (${r.status})`; await loadDocs(); return; }
+  }
+  $('status').textContent = `Added ${files.length} file(s).`;
+  $('files').value = '';
+  await loadDocs();
+}
+
+$('files').onchange = e => uploadFiles(e.target.files);
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => uploadFiles(e.dataTransfer.files));
+
+$('docs').onclick = async e => {
+  const id = e.target.dataset.del;
+  if (!id) return;
+  await fetch('/documents/' + id, {method: 'DELETE'});
+  loadDocs();
+};
+
+$('clear').onclick = async () => {
+  if (!confirm('Delete ALL documents?')) return;
+  const docs = await (await fetch('/documents')).json();
+  await Promise.all(docs.map(d => fetch('/documents/' + d.id, {method: 'DELETE'})));
+  $('status').textContent = 'All documents deleted.';
+  loadDocs();
+};
+
+$('samples').onclick = async () => {
+  $('status').textContent = 'Loading samples...';
+  const files = [];
+  for (const name of SAMPLES) {
+    const r = await fetch('/samples/' + name);
+    files.push(new File([await r.blob()], name));
+  }
+  await uploadFiles(files);
+};
+fetch('/samples/' + SAMPLES[0], {method: 'HEAD'}).then(r => { if (r.ok) $('samples').hidden = false; });
+
+$('addPasted').onclick = async () => {
   const r = await fetch('/documents', {method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({title: title.value, text: text.value})});
-  addStatus.textContent = r.ok ? 'Added.' : 'Error: ' + (await r.text());
-  if (r.ok) { title.value = ''; text.value = ''; loadDocs(); }
-}
+    body: JSON.stringify({title: $('title').value, text: $('text').value})});
+  $('status').textContent = r.ok ? 'Added.' : 'Error: ' + (await r.text());
+  if (r.ok) { $('title').value = ''; $('text').value = ''; loadDocs(); }
+};
+
 async function ask() {
-  answer.textContent = 'Thinking...'; sources.innerHTML = '';
+  $('answer').textContent = 'Thinking...'; $('sources').innerHTML = '';
   const r = await fetch('/query', {method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({question: q.value})});
-  if (!r.ok) { answer.textContent = 'Error: ' + (await r.text()); return; }
+    body: JSON.stringify({question: $('q').value})});
+  if (!r.ok) { $('answer').textContent = 'Error: ' + (await r.text()); return; }
   const data = await r.json();
-  answer.textContent = data.answer;
-  sources.innerHTML = '<p class="meta">Sources (' + data.mode + ' answer)</p>' + data.sources.map((s, i) =>
+  $('answer').textContent = data.answer;
+  $('sources').innerHTML = '<p class="meta">Sources (' + data.mode + ' answer)</p>' + data.sources.map((s, i) =>
     `<div class="src"><b>[${i + 1}] ${esc(s.title)}</b> <span class="meta">score ${s.score}</span><br>${esc(s.content)}</div>`).join('');
 }
+$('ask').onclick = ask;
+$('q').onkeydown = e => { if (e.key === 'Enter') ask(); };
 loadDocs();
 </script>
 </body>
