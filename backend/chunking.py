@@ -40,6 +40,11 @@ def chunk_text(text: str, size: int = 600, overlap: int = 100) -> list[str]:
         if current and len(current) + 2 + len(piece) > size:
             chunks.append(current)
             tail = current[-overlap:] if overlap else ""
+            if tail and not current[-overlap - 1].isspace():
+                # started mid-word: drop the partial word
+                parts = re.split(r"\s", tail, maxsplit=1)
+                tail = parts[1] if len(parts) > 1 else ""
+            tail = tail.strip()
             current = f"{tail}\n\n{piece}".strip() if tail else piece
             if len(current) > size:  # overlap pushed us over; drop the tail
                 current = piece

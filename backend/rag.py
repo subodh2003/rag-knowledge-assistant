@@ -12,6 +12,8 @@ def ingest_document(title: str, text: str) -> dict:
     vectors = embed(chunks)  # embed before opening a transaction
     with get_pool().connection() as conn:
         with conn.transaction():
+            # re-ingesting a title replaces the old copy instead of duplicating it
+            conn.execute("DELETE FROM documents WHERE title = %s", (title,))
             doc_id = conn.execute(
                 "INSERT INTO documents (title) VALUES (%s) RETURNING id", (title,)
             ).fetchone()[0]

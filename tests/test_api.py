@@ -82,3 +82,12 @@ def test_upload_binary_rejected(client):
         files={"file": ("x.bin", b"\xff\xfe\x00\x01", "application/octet-stream")},
     )
     assert r.status_code == 415
+
+
+def test_reingesting_same_title_replaces_instead_of_duplicating(client):
+    ingest(client, "refunds", DOC_A)
+    ingest(client, "refunds", DOC_A)
+    ingest(client, "refunds", DOC_A)
+    assert len(client.get("/documents").json()) == 1
+    sources = client.post("/query", json={"question": "refund", "top_k": 5}).json()["sources"]
+    assert len({s["content"] for s in sources}) == len(sources)

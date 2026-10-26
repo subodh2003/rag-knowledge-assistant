@@ -87,6 +87,6 @@ pytest -q
 - No authentication, rate limiting or per-user document isolation.
 - Plain-text and markdown only (no PDF parsing).
 - Chunking is character-based, not token-based.
-- No duplicate detection: ingesting the same file twice stores it twice.
+- Documents are matched by title: re-ingesting a title replaces the old copy.
 - No hybrid (keyword + vector) search or reranking.
 - Schema is created with `IF NOT EXISTS` on startup, not versioned migrations.

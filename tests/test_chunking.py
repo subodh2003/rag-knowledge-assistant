@@ -28,7 +28,10 @@ def test_overlap_repeats_tail_of_previous_chunk():
     text = "\n\n".join(f"Unique paragraph marker{i} " + "filler " * 20 for i in range(6))
     chunks = chunk_text(text, size=250, overlap=40)
     assert len(chunks) > 1
-    assert chunks[0][-20:] in chunks[1]
+    last_word = chunks[0].split()[-1]
+    assert last_word in chunks[1]
+    for c in chunks[1:]:
+        assert c.split()[0] in ("Unique", "paragraph", "filler") or c.split()[0].startswith("marker")
 
 
 def test_invalid_parameters():
