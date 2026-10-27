@@ -2,7 +2,7 @@
 
 Question answering over your own documents, built with **FastAPI + PostgreSQL (pgvector)**. Documents are chunked, embedded and stored; questions retrieve the closest chunks by cosine similarity, and the answer cites the passages it came from.
 
-Live demo: **<add your Render URL here>** (`/docs` for the API explorer)
+Live demo: **https://rag-knowledge-assistant-97k8.onrender.com** (`/docs` for the API explorer)
 
 ## How it works
 
